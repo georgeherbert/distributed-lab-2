@@ -1,10 +1,10 @@
 package main
 import (
-//	"net/rpc"
+	"net/rpc"
 	"flag"
 //	"bufio"
 //	"os"
-//	"secretstrings/stubs"
+	"secretstrings/stubs"
 	"fmt"
 )
 
@@ -13,4 +13,10 @@ func main(){
 	flag.Parse()
 	fmt.Println("Server: ", *server)
 	//TODO: connect to the RPC server and send the request(s)
+	client, _ := rpc.Dial("tcp", *server)
+	defer client.Close()
+	request := stubs.Request{Message: "Hello"}
+	response := new(stubs.Response)
+	client.Call(stubs.PremiumReverseHandler, request, response)
+	fmt.Println("Responded: " + response.Message)
 }
