@@ -15,6 +15,16 @@ var nextAddr string
 
 type Bottles struct {}
 
+func makeRequest(num int, nextAddr string) {
+	request := stubs.Request{Number: num}
+	response := new(stubs.Response)
+	client, _ := rpc.Dial("tcp", nextAddr)
+	defer client.Close()
+	done := make(chan *rpc.Call, 1)
+	client.Go(stubs.Sing, request, response, done)
+	fmt.Println(((<-done).Reply).(*stubs.Response).Message)
+}
+
 func (s *Bottles) Sing(req stubs.Request, res *stubs.Response) (err error) {
 	if req.Number > 0 {
 		numString := strconv.Itoa(req.Number)
@@ -27,7 +37,10 @@ func (s *Bottles) Sing(req stubs.Request, res *stubs.Response) (err error) {
 		} else if req.Number == 1 {
 			res.Message = numString + " bottle of beer on the wall, " + numString + " bottle of beer. Take one down, pass it around..."
 		}
+		time.Sleep(1 * time.Second)
+		go makeRequest(req.Number - 1, nextAddr)
 	} else {
+		time.Sleep(1 * time.Second)
 		res.Message = "No more bottles of beer on the wall. Goodbye."
 	}
 	return
@@ -40,19 +53,11 @@ func main(){
 	flag.Parse()
 	//TODO: Up to you from here! Remember, you'll need to both listen for
 	//RPC calls and make your own.
-
 	if *bottles >= 0 {
-		request := stubs.Request{Number: *bottles}
-		response := new(stubs.Response)
-		time.Sleep(1 * time.Second)
-		client, _ := rpc.Dial("tcp", nextAddr)
-		defer client.Close()
-		done := make(chan *rpc.Call, 1)
-		client.Go(stubs.Sing, request, response, done)
-		fmt.Println(((<-done).Reply).(*stubs.Response).Message)
+		go makeRequest(*bottles, nextAddr)
 	}
 	rpc.Register(&Bottles{})
 	listener, _ := net.Listen("tcp", ":" + *thisPort)
-	//defer listener.Close()
+	defer listener.Close()
 	rpc.Accept(listener)
 }
